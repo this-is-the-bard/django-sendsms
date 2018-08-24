@@ -22,6 +22,7 @@ setup(
         'twilio': ['twilio'],
         'smssluzbacz': ['smssluzbacz-api'],
         'rq': ['django_rq'],
+        'aws': ['boto3'],
     },
     test_suite="test",
     tests_require=[
@@ -31,6 +32,7 @@ setup(
         'django_rq',
         'twilio',
         'celery',
+        'boto3'
     ],
     zip_safe=False,
     classifiers=[
