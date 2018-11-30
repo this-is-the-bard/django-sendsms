@@ -32,7 +32,8 @@ setup(
         'django_rq',
         'twilio',
         'celery',
-        'boto3'
+        'boto3',
+        'tox'
     ],
     zip_safe=False,
     classifiers=[

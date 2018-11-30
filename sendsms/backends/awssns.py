@@ -2,6 +2,7 @@ import logging
 
 import boto3
 from django.conf import settings
+from ..exceptions import BackendRequirement
 
 from .base import BaseSmsBackend
 
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 AWS_ACCESS_KEY_ID = getattr(settings, 'AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = getattr(settings, 'AWS_SECRET_ACCESS_KEY')
 AWS_REGION_NAME = getattr(settings, 'AWS_REGION_NAME')
-# AWS_SMS_MONTHLY_SPEND_LIMIT = os.environ.get('AWS_SMS_MONTHLY_SPEND_LIMIT', "10")  # In USD
+# AWS_SMS_MONTHLY_SPEND_LIMIT = getattr('AWS_SMS_MONTHLY_SPEND_LIMIT', "10")  # In USD
 AWS_DEFAULT_SMS_TYPE = getattr(settings, 'AWS_DEFAULT_SMS_TYPE', 'Promotional')
 
 
@@ -35,7 +36,11 @@ class SmsBackend(BaseSmsBackend):
                 logger.error("No {} found".format(check))
                 raise Exception("No {} found".format(check))
 
-    def _send(self, message, sms_type=AWS_DEFAULT_SMS_TYPE):
+    def _send(self, message, sms_type=AWS_DEFAULT_SMS_TYPE) -> list:
+        # Verify message meats SNS requirements
+        if len(message.body) > 1600:
+            logger.error("Message body of length {} is too long".format(len(message.body)))
+            raise BackendRequirement("AWS SNS requires SNS published SMS to be no more than 1600 characters")
         # Setup params for connection
         sns = boto3.client(
             service_name='sns',
@@ -79,3 +84,12 @@ class SmsBackend(BaseSmsBackend):
             if self._send(message, sms_type=AWS_DEFAULT_SMS_TYPE):
                 num_sent += 1
         return num_sent
+
+    """
+    Response looks like {
+    'MessageId': '', 
+    'ResponseMetadata': {
+    'RequestId': '', 'HTTPStatusCode': 200, 'HTTPHeaders': {
+    'x-amzn-requestid': '', 'content-type': 'text/xml', 'content-length': '294', 'date': ''}, 'RetryAttempts': 0}}
+    Doesn't provide feedback on whether the SMS worked or not, just provides data on whether SNS received it
+    """
